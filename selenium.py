@@ -1,3 +1,4 @@
+import csv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -8,58 +9,58 @@ import time
 # Setup Chrome options
 options = Options()
 options.add_argument("--start-maximized")
-options.add_argument("--disable-infobars")
-options.add_argument("--disable-extensions")
-
-# Launch the driver
 driver = webdriver.Chrome(options=options)
 wait = WebDriverWait(driver, 10)
 
-BASE_URL = "http://localhost:3000"  # Change to your actual URL if deployed
+BASE_URL = "http://localhost:3000"  # Adjust this to your actual URL
+
+# Read credentials from CSV
+def read_credentials():
+    credentials = []
+    with open('credentials.csv', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            credentials.append({
+                "name": row["name"],
+                "email": row["email"],
+                "password": row["password"]
+            })
+    return credentials
 
 # --- SIGNUP TEST ---
-def test_signup():
+def test_signup(user):
     driver.get(f"{BASE_URL}/signup")
 
     wait.until(EC.presence_of_element_located((By.NAME, "name")))
-    name_input = driver.find_element(By.NAME, "name")
-    email_input = driver.find_element(By.NAME, "email")
-    password_input = driver.find_element(By.NAME, "password")
-    
-    name_input.send_keys("Chakra Test User")
-    email_input.send_keys("chakratestuser@example.com")
-    password_input.send_keys("SecurePassword123")
+    driver.find_element(By.NAME, "name").send_keys(user["name"])
+    driver.find_element(By.NAME, "email").send_keys(user["email"])
+    driver.find_element(By.NAME, "password").send_keys(user["password"])
 
-    # Find Chakra UI styled submit button (assumes it's still a <button type="submit">)
-    submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
-    submit_button.click()
+    driver.find_element(By.XPATH, "//button[@type='submit']").click()
 
-    # Wait for navigation or success
     time.sleep(2)
     assert "dashboard" in driver.current_url or "success" in driver.page_source.lower()
-    print("✅ Signup test passed!")
+    print(f"✅ Signup test passed for {user['email']}")
 
 # --- LOGIN TEST ---
-def test_login():
+def test_login(user):
     driver.get(f"{BASE_URL}/login")
 
     wait.until(EC.presence_of_element_located((By.NAME, "email")))
-    email_input = driver.find_element(By.NAME, "email")
-    password_input = driver.find_element(By.NAME, "password")
+    driver.find_element(By.NAME, "email").send_keys(user["email"])
+    driver.find_element(By.NAME, "password").send_keys(user["password"])
 
-    email_input.send_keys("chakratestuser@example.com")
-    password_input.send_keys("SecurePassword123")
-
-    login_button = driver.find_element(By.XPATH, "//button[@type='submit']")
-    login_button.click()
+    driver.find_element(By.XPATH, "//button[@type='submit']").click()
 
     time.sleep(2)
     assert "dashboard" in driver.current_url or "welcome" in driver.page_source.lower()
-    print("✅ Login test passed!")
+    print(f"✅ Login test passed for {user['email']}")
 
-# Run tests
+# Run tests using each user in CSV
 try:
-    test_signup()
-    test_login()
+    users = read_credentials()
+    for user in users:
+        test_signup(user)
+        test_login(user)
 finally:
     driver.quit()
